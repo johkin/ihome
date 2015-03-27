@@ -20,7 +20,7 @@ class RuleParserTest {
     @Test
     void testRuleParse() {
         def rule = parser.readRule(new File("src/test/resources/rules/test1.grule"))
-        assertEquals("test-2", rule.name)
+        assertEquals("test-3", rule.name)
         rule.ruleLogic.call()
     }
 

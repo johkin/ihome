@@ -1,7 +1,5 @@
 package se.acrend.ihome.ruleengine
 
-import javafx.scene.shape.Circle
-
 /**
  *
  */

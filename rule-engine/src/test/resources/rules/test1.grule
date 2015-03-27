@@ -7,7 +7,7 @@ rule {
         sayHello()
     }
 }
-
+/*
 rule {
     name 'test-3'
     when {
@@ -17,10 +17,12 @@ rule {
         sayHello()
     }
 }
+*/
 
 def sayHello() {
     println "Hello World"
 }
+
 
 /*
 rule "Tänd utebelysning eftermiddag"

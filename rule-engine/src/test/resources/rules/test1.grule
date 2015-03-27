@@ -1,0 +1,32 @@
+rule {
+    name 'test-2'
+    when {
+        //Item 'Sunset_Event' changed to ON
+    }
+    then {
+        sayHello()
+    }
+}
+
+rule {
+    name 'test-3'
+    when {
+        //item 'Sunset_Event' changed to ON
+    }
+    then {
+        sayHello()
+    }
+}
+
+def sayHello() {
+    println "Hello World"
+}
+
+/*
+rule "Tänd utebelysning eftermiddag"
+when
+Item Sunset_Event changed to ON
+then
+gOutsideLights.allMembers.forEach[light| light.sendCommand(ON)]
+end
+*/

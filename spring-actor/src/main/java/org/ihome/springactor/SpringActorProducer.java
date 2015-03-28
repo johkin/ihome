@@ -1,4 +1,4 @@
-package sample;
+package org.ihome.springactor;
 
 import akka.actor.Actor;
 import akka.actor.IndirectActorProducer;

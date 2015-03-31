@@ -7,6 +7,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 
+import javax.inject.Named;
+
 /**
  * The application configuration.
  */
@@ -25,6 +27,7 @@ class AppConfiguration {
      * Actor system singleton for this application.
      */
     @Bean
+    @Named("ActorSystem")
     public ActorSystem actorSystem() {
         ActorSystem system = ActorSystem.create("ihome-system");
         springExtension.initialize(applicationContext);

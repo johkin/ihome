@@ -1,14 +1,17 @@
 apply plugin: 'java'
 
-group 'org.ihome'
 
-version = '1.0-SNAPSHOT'
+allprojects {
+    group 'org.ihome'
+
+    version = '1.0-SNAPSHOT'
+
+}
 
 subprojects {
     apply plugin: 'java'
 
     sourceCompatibility = 1.8
-    version = '1.0-SNAPSHOT'
 
     repositories {
         mavenCentral()

@@ -7,8 +7,8 @@ import org.ihome.springactor.Actor;
 /**
  *
  */
-@Actor("BinarySwitchNodeActor")
-public class BinarySwitchNodeActor extends NodeActor {
+@Actor("ControllerNodeActor")
+public class ControllerNodeActor extends NodeActor {
 
     LoggingAdapter log = Logging.getLogger(getContext().system(), this);
 

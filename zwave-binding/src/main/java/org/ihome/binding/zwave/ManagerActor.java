@@ -7,13 +7,14 @@ import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import org.ihome.springactor.Actor;
 import org.ihome.springactor.SpringExtension;
-import org.zwave4j.*;
+import org.zwave4j.Manager;
+import org.zwave4j.Notification;
+import org.zwave4j.NotificationWatcher;
+import org.zwave4j.ValueId;
 
 import javax.inject.Inject;
-import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -28,10 +29,6 @@ public class ManagerActor extends UntypedActor {
     private ActorSystem actorSystem;
 
     @Inject
-    private ExecutorService executorService;
-
-    private Manager manager;
-    @Inject
     private SpringExtension springExtension;
 
     private long homeId;
@@ -43,6 +40,29 @@ public class ManagerActor extends UntypedActor {
 
     private Map<Short, ActorRef> nodeRegistry = new HashMap<>();
 
+    private Manager manager;
+
+    @Override
+    public void preStart() throws Exception {
+        manager = Manager.get();
+
+        watcher = new NotificationWatcher() {
+            @Override
+            public void onNotification(Notification notification, Object context) {
+                self().tell(notification, null);
+            }
+        };
+        manager.addWatcher(watcher, null);
+    }
+
+    @Override
+    public void postStop() throws Exception {
+        if (watcher != null) {
+        //    manager.removeWatcher(watcher, null);
+            watcher = null;
+        }
+    }
+
     @Override
     public void onReceive(Object message) throws Exception {
 
@@ -50,52 +70,18 @@ public class ManagerActor extends UntypedActor {
 
             InitManager initMessage = (InitManager) message;
 
-            watcher = getWatcher();
+            controllerPort = initMessage.controllerPort;
 
-            executorService.execute(new Runnable() {
-                @Override
-                public void run() {
-                    final Thread thread = Thread.currentThread();
-                    System.out.println(thread.getName());
-
-                    File file = new File(initMessage.configPath);
-                    if (!file.exists()) {
-                        file.mkdirs();
-                    }
-                    final Options options = Options.create(file.getAbsolutePath(), "", "");
-                    options.addOptionBool("ConsoleOutput", false);
-                    options.lock();
-
-                    manager = Manager.create();
-
-                    boolean result = manager.addDriver(initMessage.controllerPort);
-                    if (result) {
-                        log.debug("Driver added!");
-                    }
-                    manager.addWatcher(watcher, null);
-
-                }
-            });
+            manager.addDriver(controllerPort);
 
         } else if (message instanceof StopManager) {
-
-            executorService.execute(new Runnable() {
-                @Override
-                public void run() {
-                    final Thread thread = Thread.currentThread();
-                    System.out.println(thread.getName());
-
-                    log.debug("Stopping manager");
-                    // manager.removeWatcher(watcher, null);
-                    log.debug("Removed watcher");
-                    // manager.removeDriver(controllerPort);
-                    log.debug("Manager destroy");
-                    Manager.destroy();
-                    log.debug("Options destroy");
-                    Options.destroy();
-                    log.debug("Manager stopped");
-                }
-            });
+/*
+            if (watcher != null) {
+                manager.removeWatcher(watcher, null);
+                watcher = null;
+            }
+*/
+            manager.removeDriver(controllerPort);
 
         } else if (message instanceof AllOn) {
             log.debug("Switch all on");
@@ -105,6 +91,8 @@ public class ManagerActor extends UntypedActor {
             log.debug("Switch all off");
             manager.switchAllOff(homeId);
             log.debug("Switched off");
+        } else if (message instanceof Notification) {
+            getWatcher().onNotification((Notification) message, null);
         }
 
     }
@@ -192,12 +180,22 @@ public class ManagerActor extends UntypedActor {
                         ));
                         break;
                     case NODE_PROTOCOL_INFO:
+                        final String nodeType = manager.getNodeType(notification.getHomeId(), notification.getNodeId());
                         log.debug(String.format("Node protocol info\n" +
                                         "\tnode id: %d\n" +
                                         "\ttype: %s",
                                 notification.getNodeId(),
-                                manager.getNodeType(notification.getHomeId(), notification.getNodeId())
-                        ));
+                                nodeType));
+                        ActorRef nodeActor = null;
+                        switch (nodeType) {
+                            case "Static PC Controller":
+                                nodeActor = getContext().actorOf(springExtension.props("ControllerNodeActor"));
+                                break;
+                            case "Binary Power Switch":
+                                nodeActor = getContext().actorOf(springExtension.props("BinarySwitchNodeActor"));
+                                break;
+                        }
+                        nodeRegistry.put(notification.getNodeId(), nodeActor);
                         break;
                     case VALUE_ADDED:
                         log.debug(String.format("Value added\n" +
@@ -218,6 +216,7 @@ public class ManagerActor extends UntypedActor {
                                 manager.getValueLabel(notification.getValueId()),
                                 getValue(notification.getValueId())
                         ));
+                        nodeRegistry.get(notification.getNodeId()).tell(new NodeActor.ValueAdded(notification.getValueId()), self());
                         break;
                     case VALUE_REMOVED:
                         log.debug(String.format("Value removed\n" +
@@ -230,6 +229,7 @@ public class ManagerActor extends UntypedActor {
                                 notification.getValueId().getInstance(),
                                 notification.getValueId().getIndex()
                         ));
+                        nodeRegistry.get(notification.getNodeId()).tell(new NodeActor.ValueChanged(notification.getValueId()), self());
                         break;
                     case VALUE_CHANGED:
                         log.debug(String.format("Value changed\n" +
@@ -244,6 +244,7 @@ public class ManagerActor extends UntypedActor {
                                 notification.getValueId().getIndex(),
                                 getValue(notification.getValueId())
                         ));
+                        nodeRegistry.get(notification.getNodeId()).tell(new NodeActor.ValueChanged(notification.getValueId()), self());
                         break;
                     case VALUE_REFRESHED:
                         log.debug(String.format("Value refreshed\n" +
@@ -258,6 +259,7 @@ public class ManagerActor extends UntypedActor {
                                 notification.getValueId().getIndex(),
                                 getValue(notification.getValueId())
                         ));
+                        nodeRegistry.get(notification.getNodeId()).tell(new NodeActor.ValueRefreshed(notification.getValueId()), self());
                         break;
                     case GROUP:
                         log.debug(String.format("Group\n" +

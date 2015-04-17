@@ -1,6 +1,7 @@
 package org.ihome.binding.zwave;
 
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.zwave4j.NativeLibraryLoader;
 import org.zwave4j.ZWave4j;
@@ -12,6 +13,7 @@ import java.util.concurrent.Executors;
  *
  */
 @Configuration
+@ComponentScan("org.ihome.binding.zwave")
 public class ZwaveConfiguration {
 
     static {
